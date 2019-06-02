@@ -14,7 +14,7 @@ have their GPG keys handy with them or published, (b) poor usability - difficult
 * Use your existing SSH setup and keys; no need to create or manage other kinds of keys.
 * Usable security: Intuitive to use. Simple send and receive commands.
 * Stream the secret over a secure tunnel. Unlike sharing over IM/email, secrets are not stored on third-party servers or exposed to unauthorized access.
-* Perfect Forward Secrecy (PFS). Tools such as PGP uses long-lived encryption keys. The long-lived keys are subjected to compromise and can be useed to decrypt previous traffic or the encrypted files stored in the email servers. As a result PGP doesn't have the `forward secrecy` property.
+* Perfect Forward Secrecy (PFS). Tools such as PGP uses long-lived encryption keys. The long-lived keys are subjected to compromise and can be used to decrypt previous traffic or the encrypted files stored in the email servers. As a result PGP doesn't have the `forward secrecy` property.
 
 Limitations:
 * Both sender and receiver have to be online to make this work.
