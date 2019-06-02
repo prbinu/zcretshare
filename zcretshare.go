@@ -1,7 +1,7 @@
 /*
    Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
    Copyrights licensed under the BSD 3-Clause License. See the
-   accompanying LICENSE.txt file for terms.
+   accompanying LICENSE file for terms.
 */
 package main
 
@@ -38,6 +38,10 @@ const defaultDir string = ".zcretshare"
 
 var versionNumber, releaseDate string
 var stdout io.Writer = os.Stdout
+var sharedConfig = ssh.Config{
+	KeyExchanges: []string{"curve25519-sha256@libssh.org"},
+	MACs:         []string{"hmac-sha2-256-etm@openssh.com"},
+}
 
 func getPeerPubKey(pubkeyLoc, cacertFile string) ([]byte, error) {
 
@@ -414,6 +418,7 @@ func connect(opt cmdOptions) {
 	}
 
 	cfg := ssh.ClientConfig{
+		Config:          sharedConfig,
 		User:            "zcretshare-user",
 		Auth:            authMeth,
 		Timeout:         10 * time.Second,
@@ -536,6 +541,7 @@ func listen(opt cmdOptions) {
 	}
 
 	config := &ssh.ServerConfig{
+		Config:            sharedConfig,
 		NoClientAuth:      false,
 		MaxAuthTries:      3,
 		PublicKeyCallback: pkc,
@@ -718,7 +724,7 @@ func receiver(opt cmdOptions) {
 	options.StringVar(&opt.rfPort, "rf-port", "15432", "Proxy SSH RemoteForward port, used with -proxy option")
 	options.BoolVar(&opt.overwrite, "overwrite", false, "Overwrites the output file if the file already exists")
 	options.StringVar(&opt.outputDir, "dir", "~/.zcretshare", "Output file save directory")
-	options.StringVar(&opt.cacert, "cacert", "", "x509 CA certificate bundle file; used for -receiver-pubkey HTTPS URL certificate validation. (default: use system CA bunde)")
+	options.StringVar(&opt.cacert, "cacert", "", "X.509 CA certificate bundle file; used for -receiver-pubkey HTTPS URL certificate validation. (default: use system CA bunde)")
 	options.BoolVar(&opt.stdout, "dangerous-stdout", false, "Output secrets to stdout (warning: your secret may get exposed; not recommended)")
 	options.BoolVar(&opt.forever, "dangerous-forever", false, "do not exit after processing first request, instead run for ever (not recommended)")
 	options.BoolVar(&opt.quiet, "quiet", false, "supress all info messages on stdout")
@@ -847,26 +853,30 @@ SYNOPSIS
        man      Manpage
 
 DESCRIPTION
-     zcretshare provides a reasonably secure mechanism to share secrets with your co-workers. As an engineer your often would have
-     enountered situations where you need to share key materials (secrets, key files, license keys etc.) with your co-workers.
-     The common, but insecure practice is to share it over IM/chat channel or email. Sharing secrets through these communication
-     channels expose those secrets to their servers in unencrypted form. This poses a significant security risk
-     to the company. Though GPG encryption is the recommended practice, it is not widely used because: (a) not many engineers have
-     their GPG keys handy with them or published, (b) difficulty for the users to learn and use (poor usability)
+     zcretshare provides a reasonably secure mechanism to share secrets with your co-workers. As an engineer your often would
+     have enountered situations where you need to share key materials (secrets, key files, license keys etc.) with your
+     co-workers. The common, but insecure practice is to share it over IM/chat channel or email. Sharing secrets through these
+     communication channels expose those secrets to their servers in unencrypted form. This poses a significant security risk
+     to the company. Though GPG encryption is the recommended practice, it is not widely used because: (a) not many engineers
+     have their GPG keys handy with them or published, (b) difficulty for the users to learn and use (poor usability)
 
      zcretshare features:
-     * Setup a secure tunnel between workstations and share secrets over it
+     * Establishes a secure tunnel between workstations and share secrets over it
      * Use your existing SSH keys and ssh-agent, no need to create or manage other kinds of keys
      * Usable security: Intuitive to use. Simple send and receive commands
-     * Stream the secret over secure tunnel; no need to encrypt, store and forward data - common with GPG encryption and similar tools.
-       Since PGP encrypted data are typically send over email, multiple copies of encrypted data end up in 3rd party mail servers.
-     * Perfect Forward Secrecy
+     * Stream the secret over a secure tunnel. Unlike sharing over IM/email, secrets are not stored on third-party servers or
+       exposed to unauthorized access.
+     * Perfect Forward Secrecy (PFS). Tools such as PGP uses long-lived encryption keys. The long-lived keys are subjected to
+       compromise and can be useed to decrypt previous traffic or the encrypted files stored in the email servers. As a result
+       PGP doesn't have the 'forward secrecy' property.
 
-     Cons:
+     Limitations:
      * Both sender and receiver have to be online to make this work
-     * Depends on third party to authenticate peer's public key - hence more suitable in trusted environments, for instance,
-       your organiation/employer can acts as a trusted third party between sender and receiver
-     * Not suitable for sharing files larger than 200KB (may increace the limit later)
+     * Though zcretshare authenticates the server hosting peer's public key, it cannot provide strong guarantee about the
+       authenticity of peer's pubic key. Hence more suitable in trusted environments, for instance your organiation/employer
+       can acts as a trusted third party between sender and receiver (e.g. use corporate authentication enabled source
+       repository to distribute public keys).
+     * Not suitable for sharing files larger than 200KB (may increase the limit later)
 
 		 +------------+     SSH       +----------+     SSH      +------------+
 		 |   sender   | ------------> |  proxy   | <----------- |  receiver  |
@@ -885,14 +895,16 @@ DESCRIPTION
 
      Why SSH keys?
      * Most engineers are familiar with SSH and its usage.
-     * If you are an engineer, you likely have SSH keys to login to remote machines as part of your job - means you can use the same keys,
-       no need to manage additional keys.
+     * As an engineer, you would have used SSH keys to login to remote machines or used it to commit code to source
+       repositories (GitHub, GitLab) etc. -- means you can utilize the same keys, no need to create and manage additional
+       keys for sharing secrets.
      * No additional software required for proxy server. It just works with stock SSH daemon.
 
      Arguments used with 'send' and 'receive' commands
 
      -cacert string
-          x509 CA certificate bundle file; used for -receiver-pubkey HTTPS URL certificate validation. (default: use system CA bunde)
+          X.509 CA certificate bundle file; used for -receiver-pubkey HTTPS URL certificate validation. 
+	  (default: use system CA bunde)
 
      -connect string
           Target host to connect; format: host:port (not required if you use -proxy)
@@ -945,7 +957,8 @@ DESCRIPTION
 
      Valid options for 'send -proxy':
           -key -receiver-pubkey -proxy-key -proxy-host-pubkey -rf-proxy -in-file -cacert -quiet
-          A proxy is used when both sender and receiver cannot reach each other directly. Proxy is a SSH server reachable by both parties, and can be hosted in cloud (AWS, GCP, Azure etc.)
+          A proxy is used when both sender and receiver cannot reach each other directly. Proxy is a SSH server reachable by
+          both parties, and can be hosted in cloud (AWS, GCP, Azure etc.)
 
      Valid options for 'send -connect':
           -key -receiver-pubkey -in-file -cacert -quiet
@@ -953,10 +966,12 @@ DESCRIPTION
 
      Valid options for 'send -listen':
           -key -receiver-pubkey -in-file -dangerous-forever -cacert -quiet
-          Used if the receiver can reach sender but not the otherway. For example, the receiver would be inside a firewall'd network or using private IP, hence not directly reachable by sender.
+          Used if the receiver can reach sender but not the otherway. For example, the receiver would be inside a firewall'd
+          network or using private IP, hence not directly reachable by sender.
 
      Valid options for 'receive -proxy':
-          -key -sender-pubkey -proxy-key -proxy-host-pubkey -rf-port -overwrite -dir -dangerous-stdout -dangerous-forever -cacert -quiet
+          -key -sender-pubkey -proxy-key -proxy-host-pubkey -rf-port -overwrite -dir -dangerous-stdout -dangerous-forever
+          -cacert -quiet
           A proxy is used when both sender and receiver cannot reach each other directly
 
      Valid options for 'receive -listen':
@@ -965,10 +980,12 @@ DESCRIPTION
 
      Valid options for 'receive -connect':
           -key -sender-pubkey -overwrite -dir -dangerous-stdout -cacert -quiet
-          Used if the receiver can reach sender but not the otherway. For example, the receiver would be inside a firewall'd network or using private IP, hence not directly reachable by sender.
+          Used if the receiver can reach sender but not the otherway. For example, the receiver would be inside a firewall'd
+          network or using private IP, hence not directly reachable by sender.
 
      Sharing public keys
-     The easiest way to exchange public keys between users is to use out-of-band channels - for example, Slack channel, email, GitHub etc.
+     The easiest way to exchange public keys between users is to use out-of-band channels - for example, Slack channel,
+     email, GitHub etc.
 
 EXAMPLES
      zcretshare send -connect ssh://<receiver-host>:<15432> -key sender_id_rsa -receiver-pubkey ~/.ssh/recv_id_rsa.pub -in-file ~/secret-file.txt

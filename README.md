@@ -6,24 +6,24 @@ A command-line tool to share secret/key materials between two (or more) users us
 enountered situations where you need to share key materials (secrets, key files, license keys etc.) with your co-workers.
 The common, but **insecure** practice is to share it over IM/chat channel or email. Sharing secrets through these 
 communication channels expose those secrets to their servers in unencrypted form. This poses a significant security risk
-to the company. Though GPG encryption is the recommended practice, it is not widely used because: (a) not many engineers have
-their GPG keys handy with them or published, (b) poor usability - difficulty for the users to learn and use.
+to the company. Though PGP (GPG) encryption is the recommended practice, it is not widely used because: (a) not many engineers
+have their GPG keys handy with them or published, (b) poor usability - difficulty for the users to learn and use.
 
 ### `zcretshare` features:
-* Setup a secure tunnel between workstations and share secrets over it
-* Use your existing SSH setup and keys; no need to create or manage other kinds of keys
-* Usable security: Intuitive to use. Simple send and receive commands
-* Stream the secret over secure tunnel; no need to encrypt store and forward data - common with GPG encryption and similar tools. Since PGP encrypted data are typically sent over email, multiple copies of encrypted data end up in third-party mail servers.
-* Perfect Forward Secrecy
+* Establishes a secure tunnel between workstations and share secrets over it.
+* Use your existing SSH setup and keys; no need to create or manage other kinds of keys.
+* Usable security: Intuitive to use. Simple send and receive commands.
+* Stream the secret over a secure tunnel. Unlike sharing over IM/email, secrets are not stored on third-party servers or exposed to unauthorized access.
+* Perfect Forward Secrecy (PFS). Tools such as PGP uses long-lived encryption keys. The long-lived keys are subjected to compromise and can be useed to decrypt previous traffic or the encrypted files stored in the email servers. As a result PGP doesn't have the `forward secrecy` property.
 
-Cons:
-* Both sender and receiver have to be online to make this work
-* Depends on third party to authenticate peer's public key - hence more suitable in trusted environments, for instance, your organiation/employer can acts as a trusted third party between sender and receiver (e.g. use corporate authentication enabled source repo to distribute public keys).
-* Not suitable for sharing files larger than 200KB (may increace the limit later)
+Limitations:
+* Both sender and receiver have to be online to make this work.
+* Though `zcretshare` authenticates the server hosting peer's public key, it cannot provide strong guarantee about the authenticity of peer's pubic key. Hence more suitable in trusted environments, for instance your organiation/employer can act as a trusted third party between sender and receiver (e.g. use corporate authentication enabled source repository to distribute public keys).
+* Not suitable for sharing files larger than 200KB (may increase the limit later).
 
 ### Scenarios
 
-1. If both users are in same (reachable) network, they may exchange secrets directly as follows:
+1. If both users are on same (reachable) network, they may exchange secrets directly as follows:
 <p align="center">
   <img src="docs/zcretshare.png" width="50%" height="80%">
 </p>
@@ -40,13 +40,15 @@ Cons:
 
 In the above case, both users should have SSH access to the proxy host.
 
+4. `zcretshare` can also be used to share (push or pull) secrets between Virtual Machines (VM) and BareMetal (BM) Hosts
+
 ### Why SSH keys?
 * Most engineers are familiar with SSH and its usage.
-* If you are an engineer, you likely have SSH keys to login to remote machines as part of your job - means you can use the same keys, no need to manage additional keys.
+* As an engineer, you would have used SSH keys to login to remote machines or used it to commit code to source repositories (GitHub, GitLab) etc. -- means you can utilize the same keys, no need to create and manage additional keys for sharing secrets.
 * No additional software required for proxy server. It just works with stock OpenSSH daemon.
 
-### Why not TLS & X509 certificates?
-* Unlike SSH keys, X.509 user certificates are not widely used. It also requires integration with PKI infrastrcture (or use self-signed certificates).
+### Why not TLS & X.509 certificates?
+* Unlike SSH keys, X.509 'user' certificates are not widely used. It also requires integration with PKI infrastructure (or use self-signed certificates).
 * The burden of managing yet another rarely used keys.
 * For proxy use-case, you need to run a TLS proxy server, and even that requires TLS certificates.
 
@@ -57,7 +59,7 @@ The easiest way to exchange public keys between users is to use out-of-band chan
 
 Supported OS:
 * MacOS
-* Linux(Ubuntu)
+* Linux
 * Windows
 
 ### Build from source
@@ -82,11 +84,11 @@ A `Makefile` is also included. It supports build, test, release, install and uni
 Usage: zcretshare receive [-h] [options]
 
   -cacert string
-    	x509 CA certificate bundle file; used for -receiver-pubkey HTTPS URL certificate validation. (default: use system CA bunde)
+    	X.509 CA certificate bundle file; used for -receiver-pubkey HTTPS URL certificate validation. (default: use system CA bunde)
   -connect string
     	Target host to connect; format: host:port (not required if you use -proxy)
   -dangerous-forever
-    	do not exit after processing first request, instead run for ever (not recommended)
+    	Do not exit after processing first request, instead run for ever (not recommended)
   -dangerous-stdout
     	Output secrets to stdout (warning: your secret may get exposed; not recommended)
   -dir string

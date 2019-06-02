@@ -1,7 +1,7 @@
 /*
    Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
    Copyrights licensed under the BSD 3-Clause License. See the
-   accompanying LICENSE.txt file for terms.
+   accompanying LICENSE file for terms.
 */
 package main
 
